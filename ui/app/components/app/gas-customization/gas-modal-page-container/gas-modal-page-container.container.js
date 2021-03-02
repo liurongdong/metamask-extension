@@ -60,7 +60,7 @@ const mapStateToProps = (state, ownProps) => {
   const { currentNetworkTxList, send } = state.metamask;
   const { modalState: { props: modalProps } = {} } = state.appState.modal || {};
   const { txData = {} } = modalProps || {};
-  const { transaction = {} } = ownProps;
+  const { transaction = {}, onSubmit } = ownProps;
   const selectedTransaction = currentNetworkTxList.find(
     ({ id }) => id === (transaction.id || txData.id),
   );
@@ -76,7 +76,8 @@ const mapStateToProps = (state, ownProps) => {
         value: sendToken ? '0x0' : send.amount,
       };
 
-  const { gasPrice: currentGasPrice, gas: currentGasLimit, value } = txParams;
+  const { gasPrice: currentGasPrice, gas: currentGasLimit } = txParams;
+  const value = ownProps.transaction?.txParams?.value || txParams.value;
   const customModalGasPriceInHex = getCustomGasPrice(state) || currentGasPrice;
   const customModalGasLimitInHex =
     getCustomGasLimit(state) || currentGasLimit || '0x5208';
@@ -173,6 +174,7 @@ const mapStateToProps = (state, ownProps) => {
     tokenBalance: getTokenBalance(state),
     conversionRate,
     value,
+    onSubmit,
   };
 };
 
@@ -251,6 +253,12 @@ const mergeProps = (stateProps, dispatchProps, ownProps) => {
     ...otherDispatchProps,
     ...ownProps,
     onSubmit: (gasLimit, gasPrice) => {
+      if (ownProps.onSubmit) {
+        dispatchHideSidebar();
+        dispatchCancelAndClose();
+        ownProps.onSubmit(gasLimit, gasPrice);
+        return;
+      }
       if (isConfirm) {
         const updatedTx = {
           ...transaction,
